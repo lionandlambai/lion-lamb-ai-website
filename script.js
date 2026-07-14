@@ -30,6 +30,36 @@ if (footerTarget) footerTarget.innerHTML = `
     <div class="footer-bottom"><span>© <span data-year></span> Lion and Lamb AI. All rights reserved.</span><div><a href="${root}privacy.html">Privacy Policy</a><a href="${root}terms.html">Terms</a><a href="${root}cookies.html">Cookie Policy</a></div></div>
   </div></footer><a class="whatsapp" href="https://wa.me/" aria-label="Chat with us on WhatsApp">W</a>`;
 
+document.body.insertAdjacentHTML('beforeend', `
+  <section class="chat-widget" aria-label="Lion and Lamb AI chat assistant">
+    <button class="chat-toggle" type="button" aria-expanded="false" aria-controls="chat-panel">
+      <span>Chat</span>
+      <strong>AI</strong>
+    </button>
+    <div class="chat-panel" id="chat-panel" aria-hidden="true">
+      <div class="chat-head">
+        <div>
+          <p class="eyebrow">Lion and Lamb AI</p>
+          <h2>How can we help?</h2>
+        </div>
+        <button class="chat-close" type="button" aria-label="Close chat">x</button>
+      </div>
+      <div class="chat-body" aria-live="polite">
+        <div class="chat-message bot">Hi, I am the Lion and Lamb AI assistant. Ask me about packages, AI receptionists, automation, websites, or booking a free consultation.</div>
+      </div>
+      <div class="chat-prompts" aria-label="Quick chat options">
+        <button type="button" data-chat-prompt="Which package is right for my business?">Choose a package</button>
+        <button type="button" data-chat-prompt="How can an AI receptionist help my business?">AI receptionist</button>
+        <button type="button" data-chat-prompt="I want to book a free consultation">Book consultation</button>
+      </div>
+      <form class="chat-form">
+        <label class="sr-only" for="chat-input">Type your message</label>
+        <input id="chat-input" type="text" placeholder="Ask a question..." autocomplete="off">
+        <button type="submit">Send</button>
+      </form>
+    </div>
+  </section>`);
+
 let savedTheme;
 try { savedTheme = localStorage.getItem('ll-theme'); } catch (_) {}
 if (savedTheme) document.documentElement.dataset.theme = savedTheme;
@@ -38,6 +68,19 @@ const menuToggle=document.querySelector('.menu-toggle'), nav=document.querySelec
 menuToggle?.addEventListener('click',()=>{const open=nav.classList.toggle('open');menuToggle.setAttribute('aria-expanded',open);menuToggle.textContent=open?'×':'☰';document.body.classList.toggle('menu-open',open)});
 document.querySelectorAll('.faq-question').forEach(btn=>btn.addEventListener('click',()=>{const item=btn.closest('.faq-item'),open=item.classList.toggle('open');btn.setAttribute('aria-expanded',open)}));
 document.querySelectorAll('.demo-form').forEach(form=>form.addEventListener('submit',e=>{e.preventDefault();const status=form.querySelector('.form-status');if(status) status.textContent='Thanks — this demo form is ready to connect to your CRM.';form.reset()}));
+const chatWebhookUrl='https://bot.lionandlambai.com/webhook/1474e290-a872-4ba1-b90b-3ef5fc9deefe/chat';
+const chatWidget=document.querySelector('.chat-widget'),chatToggle=document.querySelector('.chat-toggle'),chatPanel=document.querySelector('.chat-panel'),chatClose=document.querySelector('.chat-close'),chatBody=document.querySelector('.chat-body'),chatForm=document.querySelector('.chat-form'),chatInput=document.querySelector('#chat-input');
+let chatSessionId;
+try{chatSessionId=sessionStorage.getItem('ll-chat-session')||crypto.randomUUID();sessionStorage.setItem('ll-chat-session',chatSessionId)}catch(_){chatSessionId=String(Date.now())}
+const openChat=()=>{chatWidget?.classList.add('open');chatToggle?.setAttribute('aria-expanded','true');chatPanel?.setAttribute('aria-hidden','false');setTimeout(()=>chatInput?.focus(),80)};
+const closeChat=()=>{chatWidget?.classList.remove('open');chatToggle?.setAttribute('aria-expanded','false');chatPanel?.setAttribute('aria-hidden','true')};
+const addChatMessage=(text,type='bot')=>{if(!chatBody)return null;const msg=document.createElement('div');msg.className=`chat-message ${type}`;msg.textContent=text;chatBody.appendChild(msg);chatBody.scrollTop=chatBody.scrollHeight;return msg};
+const readChatReply=data=>typeof data==='string'?data:data?.output||data?.response||data?.text||data?.message||data?.reply||data?.answer||data?.data?.output||data?.data?.response||data?.[0]?.output||'Thanks — I received your message. Calvin will be able to follow up if needed.';
+const sendChatMessage=async text=>{const thinking=addChatMessage('Thinking...','bot');try{const response=await fetch(chatWebhookUrl,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({chatInput:text,message:text,sessionId:chatSessionId,page:location.href,source:'lion-and-lamb-ai-website'})});if(!response.ok)throw new Error(`HTTP ${response.status}`);const contentType=response.headers.get('content-type')||'';const data=contentType.includes('application/json')?await response.json():await response.text();thinking.textContent=readChatReply(data)}catch(error){thinking.textContent='Sorry, I could not reach the AI assistant right now. Please try again shortly or book a free consultation.'}finally{chatBody.scrollTop=chatBody.scrollHeight}};
+chatToggle?.addEventListener('click',()=>chatWidget?.classList.contains('open')?closeChat():openChat());
+chatClose?.addEventListener('click',closeChat);
+document.querySelectorAll('[data-chat-prompt]').forEach(btn=>btn.addEventListener('click',()=>{openChat();const text=btn.dataset.chatPrompt;addChatMessage(text,'user');sendChatMessage(text)}));
+chatForm?.addEventListener('submit',e=>{e.preventDefault();const text=chatInput?.value.trim();if(!text)return;addChatMessage(text,'user');chatInput.value='';sendChatMessage(text)});
 const interestSelect=document.querySelector('#interest');
 if(interestSelect) interestSelect.innerHTML='<option>Not sure yet</option><option>AI Receptionist</option><option>Business Automation</option><option>AI Website</option><option>Starter Package</option><option>Growth Package</option><option>Full Scale Package</option>';
 const packageSelect=document.querySelector('#book-package');
